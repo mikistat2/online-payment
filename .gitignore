@@ -1,0 +1,6 @@
+nodemodule
+.env
+node_modules/
+uploads/
+
+
