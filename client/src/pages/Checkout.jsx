@@ -78,12 +78,25 @@ function Checkout() {
         setReference(res.data.reference);
         setAmount(res.data.amount);
       } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 409) {
+          const data = error.response.data || {};
+          if (data.reference) {
+            setReference(data.reference);
+          }
+          if (data.amount) {
+            setAmount(data.amount);
+          }
+          navigate(`/course/${courseId}`);
+          return;
+        }
+
         console.error("Error creating payment:", error);
+        setVerificationError("Unable to start payment session");
       }
     };
 
     createPayment();
-  }, [courseId]);
+  }, [courseId, navigate]);
 
   const loadImageFromFile = (uploadedFile) => {
     return new Promise((resolve, reject) => {

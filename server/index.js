@@ -142,6 +142,24 @@ app.post("/create-payment", async (req, res) => {
   }
 
   try {
+    const successful = await pool.query(
+      `SELECT reference_code, expected_amount, status, verified_at
+       FROM payments
+       WHERE student_id = $1 AND course_id = $2 AND status = 'VERIFIED'
+       ORDER BY verified_at DESC NULLS LAST, created_at DESC
+       LIMIT 1`,
+      [studentId, courseId]
+    );
+
+    if (successful.rows.length) {
+      return res.status(409).json({
+        error: "Payment already verified for this student and course",
+        reference: successful.rows[0].reference_code,
+        amount: successful.rows[0].expected_amount,
+        status: successful.rows[0].status,
+      });
+    }
+
     const existing = await pool.query(
       `SELECT reference_code, expected_amount
        FROM payments
@@ -228,7 +246,14 @@ app.get("/payments/access", async (req, res) => {
       `SELECT access_granted, status
        FROM payments
        WHERE student_id = $1 AND course_id = $2
-       ORDER BY created_at DESC
+       ORDER BY
+         CASE
+           WHEN status = 'VERIFIED' THEN 0
+           WHEN status = 'PENDING' THEN 1
+           ELSE 2
+         END,
+         COALESCE(verified_at, created_at) DESC,
+         created_at DESC
        LIMIT 1`,
       [studentId, courseId]
     );
@@ -372,7 +397,20 @@ app.post("/verify-payment", upload.single("qrImage"), async (req, res) => {
     }
 
     const digits = (verification.receiverAccount || "").replace(/\D/g, "");
-    if (digits && !digits.endsWith("8966")) {
+    const expectedSuffixDigits = (accountSuffix || "").replace(/\D/g, "");
+    const receiverLast4 = digits.slice(-4);
+    const expectedLast4 = expectedSuffixDigits.slice(-4);
+
+    console.log(
+      "receiver account last4 match",
+      receiverLast4 === expectedLast4,
+      "expected last4",
+      expectedLast4,
+      "receiver last4",
+      receiverLast4
+    );
+
+    if (receiverLast4 && expectedLast4 && receiverLast4 !== expectedLast4) {
       throw new VerificationError(
         400,
         "Receiver account mismatched",

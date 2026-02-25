@@ -1,7 +1,28 @@
 import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 function Course() {
   const { courseId } = useParams();
+  const [courses, setCourses] = useState([]);
+  const [imageUrl, setImageUrl] = useState("");
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/courses");
+        setCourses(res.data);
+        console.log("Fetched courses:", res.data);
+        setImageUrl(res.data.find((c) => String(c.id) === String(courseId))?.sec_img || "");
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+
+      }
+    };
+
+    fetchCourses();
+    console.log("Course image:", imageUrl);
+  }, [courseId]);
 
   return (
     <div style={{ padding: 40 }}>
@@ -10,6 +31,7 @@ function Course() {
 
       <h3>Lesson 1: Introduction</h3>
       <p>This is protected content.</p>
+      <img src={imageUrl} alt="Course Image" />
     </div>
   );
 }

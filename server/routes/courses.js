@@ -11,6 +11,7 @@ router.get("/courses", async (req, res) => {
         courses.id,
         courses.teacher_id,
         courses.title,
+        courses.sec_img,
         courses.description,
         courses.price,
         teachers.name AS teacher_name
