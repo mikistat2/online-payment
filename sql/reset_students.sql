@@ -1,0 +1,14 @@
+BEGIN;
+
+DROP TABLE IF EXISTS students CASCADE;
+
+CREATE TABLE students (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  age INTEGER,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMIT;

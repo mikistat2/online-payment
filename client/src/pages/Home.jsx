@@ -3,9 +3,16 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 function Home() {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(() =>
+    JSON.parse(localStorage.getItem("user") || "{}")
+  );
+
+  useEffect(() => {
+    setCurrentUser(JSON.parse(localStorage.getItem("user") || "{}"));
+  }, []);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -22,55 +29,174 @@ function Home() {
     fetchCourses();
   }, []);
 
-  if (loading) return <h2 style={{ padding: 40 }}>Loading courses...</h2>;
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          backgroundColor: "#ffffff",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          
+        }}
+      >
+        <h2 style={{ color: "#111" }}>Loading courses...</h2>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: 40 }}>
-      <h1>Available Courses</h1>
+    <main
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#ffffff",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "60px 20px",
+        
+      }}
+    >
+      <div style={{ textAlign: "center", marginBottom: "50px" }}>
+        <h1 style={{ fontSize: "32px", color: "#111" }}>
+          Available Image Collections
+        </h1>
 
-      {courses.length === 0 && <p>No courses found.</p>}
+        <h2 style={{ color: "#666", marginTop: "10px" }}>
+          {currentUser?.name ? `Hi, ${currentUser.name}!` : "Welcome!"}
+        </h2>
+      </div>
 
-      {courses.map((course) => (
-        <div
-          key={course.id}
-          style={{
-            border: "1px solid #ccc",
-            padding: 20,
-            marginBottom: 20,
-            borderRadius: 8,
-          }}
-        >
-          <h2>{course.title}</h2>
-          <p><strong>Teacher:</strong> {course.teacher_name}</p>
-          <p><strong>Price:</strong> {course.price} ETB</p>
-          <p>{course.description}</p>
+      {courses.length === 0 && (
+        <p style={{ color: "#777" }}>No image collections found.</p>
+      )}
 
-          <button
-            onClick={async () => {
-              try {
-                const res = await axios.get("http://localhost:5000/payments/access", {
-                  params: {
-                    studentId: 1,
-                    courseId: course.id,
-                  },
-                });
-
-                if (res.data?.accessGranted) {
-                  navigate(`/course/${course.id}`);
-                  return;
-                }
-              } catch (error) {
-                console.error("Error checking access:", error);
-              }
-
-              navigate(`/checkout/${course.id}`);
+      {/* CENTERED GRID */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "1000px",
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center", // THIS centers cards properly
+          gap: "30px",
+        }}
+      >
+        {courses.map((course) => (
+          <div
+            key={course.id}
+            style={{
+              width: "320px", // fixed width so they don't stretch
+              borderRadius: "16px",
+              padding: "25px",
+              backgroundColor: "#f3f4f6",
+              border: "2px solid #e5e7eb",
+              boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              transition: "0.3s ease",
+              textAlign: "center",
             }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.transform = "translateY(-6px)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.transform = "translateY(0)")
+            }
           >
-            Enroll Now
-          </button>
-        </div>
-      ))}
-    </div>
+            <div>
+              <h3 style={{ color: "#1f2937", marginBottom: "15px" }}>
+                {course.title}
+              </h3>
+
+              <p style={{ color: "#4b5563" }}>
+                <strong style={{ color: "#111827" }}>
+                  Image holder:
+                </strong>{" "}
+                {course.teacher_name}
+              </p>
+
+              <p
+                style={{
+                  color: "#2563eb",
+                  fontWeight: "600",
+                  fontSize: "18px",
+                  marginTop: "10px",
+                }}
+              >
+                {course.price} ETB
+              </p>
+
+              <p
+                style={{
+                  color: "#6b7280",
+                  marginTop: "15px",
+                  fontSize: "14px",
+                }}
+              >
+                {course.description}
+              </p>
+            </div>
+
+            <button
+              onClick={async () => {
+                try {
+                  if (!currentUser?.id) return;
+
+                  const res = await axios.get(
+                    "http://localhost:5000/payments/access",
+                    {
+                      params: {
+                        studentId: currentUser.id,
+                        courseId: course.id,
+                      },
+                    }
+                  );
+
+                  if (res.data?.accessGranted) {
+                    navigate(`/course/${course.id}`);
+                    return;
+                  }
+                } catch (error) {
+                  console.error(error);
+                }
+
+                navigate(`/checkout/${course.id}`);
+              }}
+              style={{
+                marginTop: "25px",
+                padding: "14px",
+                borderRadius: "10px",
+                border: "none",
+                backgroundColor: "#111827",
+                color: "#ffffff",
+                fontWeight: "500",
+                cursor: "pointer",
+              }}
+            >
+              Buy Collection
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={() => navigate("/")}
+        style={{
+          marginTop: "60px",
+          padding: "14px 28px",
+          borderRadius: "10px",
+          border: "2px solid #111827",
+          backgroundColor: "transparent",
+          color: "#111827",
+          cursor: "pointer",
+        }}
+      >
+        Go Back Home
+      </button>
+    </main>
   );
 }
 

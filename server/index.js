@@ -5,10 +5,14 @@ import axios from "axios";
 import courseRoutes from "./routes/courses.js";
 import { pool } from "./db.js";
 import { verifyCbePayment } from "./cbeAuth.js";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 const PAYMENT_WINDOW_MINUTES = 120;
+const SECRET_KEY = process.env.JWT_SECRET || "dev-secret";
 
 const randomRef = () => {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -129,6 +133,71 @@ app.post("/api/verify-cbe", async (req, res) => {
     };
 
     return res.status(status).json(data);
+  }
+});
+
+
+// authentication and login routes
+
+app.post("/auth/register", async (req, res)=>{
+
+  const {name, age, email, password} = req.body;
+
+  console.log("Registration attempt:", { name, age, email });
+
+  try{
+
+    const getemail = await pool.query("SELECT * FROM students WHERE email = $1", [email]);
+
+    if (getemail.rows[0]){
+      return res.status(400).json({error: "User already exists"});
+    }
+    const respond = await pool.query(
+      "INSERT INTO students (name, email, password, age) VALUES ($1, $2, $3, $4) RETURNING *",
+      [name, email, password, age]
+    );
+
+    res.status(201).json(respond  .rows[0]);
+  }catch(error){
+    console.error("Error registering user:", error);
+    res.status(500).json({error: "Failed to register user"});
+  }
+
+});
+
+
+// login
+
+app.post("/auth/login", async (req, res) =>{
+  const {email, password} = req.body;
+
+  try{
+
+    const checkemail = await pool.query("SELECT * FROM students WHERE email = $1", [email]);
+
+    if (checkemail.rows.length === 0){
+      return res.status(400).json({error: "User does not exist"});
+    }
+
+    const checkuser = await pool.query(
+      "SELECT * FROM students WHERE email = $1 AND password = $2",
+      [email, password]
+    );
+
+    if (checkuser.rows.length === 0){
+      return res.status(400).json({error: "Invalid credentials"});
+    }
+
+    const token = jwt.sign(
+      {email: email, name: checkuser.rows[0].name},
+      SECRET_KEY,
+      {expiresIn: "1h"}
+    )
+     const user = checkuser.rows[0];
+     return res.status(200).json({user, token});
+
+  }catch(error){
+    return res.status(500).json({error: "Failed to login"});
   }
 });
 
